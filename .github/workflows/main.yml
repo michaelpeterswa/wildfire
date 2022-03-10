@@ -39,22 +39,27 @@ jobs:
         working-directory: backend
         run: go test ./...
   ember-test:
-    name: Test Ember.js
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
-        matrix:
-            os: [ubuntu-latest]
-            node-version: [16.x]
+      matrix:
+        node-version: [16.x]
     steps:
-      - name: Check code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v1
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install dependencies
+      - name: Install Dependencies
         working-directory: frontend
-        run: npm i
-      - name: Test Ember app
+        run: npm ci
+      - name: JavaScript Linting
         working-directory: frontend
-        run: ember test
+        run: npm run lint:js
+      - name: Template Linting
+        working-directory: frontend
+        run: npm run lint:hbs
+      - name: npm test
+        working-directory: frontend
+        run: npm test
+        env:
+          CI: true
