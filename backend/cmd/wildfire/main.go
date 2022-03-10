@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"log"
-	"time"
+	"net/http"
 
-	"github.com/gin-contrib/cors"
-	ginzap "github.com/gin-contrib/zap"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/michaelpeterswa/wildfire/backend/internal/cache"
 	"github.com/michaelpeterswa/wildfire/backend/internal/db"
 	"github.com/michaelpeterswa/wildfire/backend/internal/logging"
 	"go.uber.org/zap"
 )
+
+type HealthCheck struct {
+	Healthy string `json:"healthy"`
+}
 
 func main() {
 	ctx := context.Background()
@@ -22,30 +25,33 @@ func main() {
 		log.Fatal("unable to acquire zap logger")
 	}
 
-	_, err = cache.InitRedis(ctx, "", 1, "")
+	_, err = cache.InitRedis(ctx, "redis", 6379)
 	if err != nil {
 		logger.Error("unable to acquire redis client", zap.Error(err))
 	}
 
-	_, err = db.InitMongo(ctx, "")
+	_, err = db.InitMongo(ctx, "mongodb://localhost:27017")
 	if err != nil {
 		logger.Error("unable to acquire mongo client", zap.Error(err))
 	}
 
-	r := gin.New()
-	r.Use(cors.Default())
+	e := echo.New()
+	e.Use(middleware.Static("dist"))
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
+	}))
 
-	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	r.Use(ginzap.RecoveryWithZap(logger, true))
-
-	r.GET("/healthcheck", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"healthy": "ok",
+	e.GET("/healthcheck", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, HealthCheck{
+			Healthy: "ok`",
 		})
 	})
 
-	err = r.Run()
-	if err != nil {
-		logger.Fatal("unable to start gin server", zap.Error(err))
-	}
+	e.Any("/*", func(c echo.Context) error {
+		return c.File("dist/index.html")
+	})
+
+	err = e.Start(":8080")
+	logger.Fatal("failed to start echo", zap.Error(err))
 }
