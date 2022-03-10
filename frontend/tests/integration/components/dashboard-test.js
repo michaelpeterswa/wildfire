@@ -12,15 +12,6 @@ module('Integration | Component | dashboard', function(hooks) {
 
     await render(hbs`<Dashboard />`);
 
-    assert.dom(this.element).hasText('');
-
-    // Template block usage:
-    await render(hbs`
-      <Dashboard>
-        template block text
-      </Dashboard>
-    `);
-
-    assert.dom(this.element).hasText('template block text');
+    assert.dom(this.element).hasText('Open drawer');
   });
 });
